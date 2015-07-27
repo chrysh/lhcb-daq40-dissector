@@ -35,6 +35,12 @@ void proto_register_mep(void)
         &ett_mep
     };
 
+    static const value_string pkt_type_names[] = {
+        {0x41, "Received an A"},
+        {0x42, "Received something else"},
+        {0, NULL},
+    };
+
     static hf_register_info hf[] = {
         { &hf_mep_seqno,
             { "MEP Sequence number", "mep.seqno",
@@ -45,7 +51,7 @@ void proto_register_mep(void)
         { &hf_mep_pdu_type,
             { "MEP PDU Type", "mep.type",
             FT_UINT8, BASE_HEX,
-            NULL, 0x0,
+            VALS(pkt_type_names), 0x0,
             "pdu type", HFILL }
         },
 
