@@ -1,4 +1,6 @@
 #include "config.h"
+#include "packet-lhcb-daq40-dissector.h"
+
 #include <epan/packet.h>
 #include <stdio.h>
 #include <math.h>
@@ -36,6 +38,20 @@ static gint ett_frag = -1;
 static gint ett_data = -1;
 static gint ett_payload = -1;
 
+static struct daq40_config cfg = {0};
+
+static void init_cfg(void)
+{
+  cfg.fe_header_msb = HEADER_MSB;
+  cfg.fe_frame_bits = FRAME_BITS;
+  cfg.fe_bxid_bits = BXID_SIZE;
+  cfg.fe_info_bits = INFO_SIZE;
+  cfg.fe_datalen_bits = DATALEN_BITS_SIZE;
+  cfg.fe_channel_bits = CHANNEL_BITS;
+  cfg.fe_nzs_bits = NZS_BITS;
+  //cfg.fe_sync_pattern = SYNC_PATTERN;
+}
+
 static void dissect_data(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 {
     proto_item *pi = NULL;
@@ -66,7 +82,6 @@ static void dissect_data(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             proto_tree_add_item(data_tree, hf_data_evid, tvb, offset, 8, ENC_BIG_ENDIAN);  // 64bit = 8 byte
             offset += 8;
             proto_tree_add_item(data_tree, hf_data_type, tvb, offset, 1, ENC_BIG_ENDIAN);
-            printf("blubb\n");
             offset += 1;
             proto_tree_add_item(data_tree, hf_data_size, tvb, offset, 2, ENC_BIG_ENDIAN);
             size = tvb_get_bits16(tvb, offset*8, 16, FALSE);
@@ -139,51 +154,48 @@ static void dissect_meta(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 
             uint32_t frag_gdl = global_hdr & 0xFFFFF;
             printf("FRG.gdl: %u\n", frag_gdl);
-            
+
             frag_item = proto_tree_add_text(meta_tree, tvb, offset, -1, "Frag #%d,FRG.bxid: %hu, FRG.gdl: %u", i, frag_bxid, frag_gdl);
             frag_tree = proto_item_add_subtree(frag_item, ett_frag);
 
-#define GLOBAL_HEADER_BYTES 4
             size_t event_bytes = GLOBAL_HEADER_BYTES + ceil(frag_gdl/8.0);
             size_t padding = event_bytes % 8 ? (8 - (event_bytes % 8)) : 0;
 
             proto_item *ti = proto_tree_add_bits_item(frag_tree, hf_frag_bxid_gdl, tvb, data_offset, 32, ENC_BIG_ENDIAN);
-            //proto_item_set_text(ti, "BXID: %hu: GDL: %u", global_hdr >> 20, global_hdr & 0xFFFFF);
-            //proto_tree_add_bits_item(frag_tree, hf_frag_gdl, tvb, data_offset, 20, ENC_BIG_ENDIAN);
             data_offset += 32;
-            //proto_tree_add_item(frag_tree, hf_opt_data, tvb, data_offset, 2*8, ENC_BIG_ENDIAN); // 12 bits
-            /*** MEP amc40_lapp_dp_fv_msb_wide_bx12_mentor ***/
-#define NUM_LINKS   3
             for (j = 0; j < NUM_LINKS; j++) {
                 printf("\nOPT (%d): ", j);
-                //proto_tree_add_item(frag_tree, hf_opt_bxid, tvb, offset, 2, ENC_BIG_ENDIAN); // 12 bits
                 printf("offset: %x ", offset);
-/* Sizes defined in bits*/
-#define BXID_SIZE           12  
-#define INFO_SIZE           1
-#define DATALEN_BITS_SIZE   7   
                 guint16 bxid = tvb_get_bits16(tvb, data_offset, BXID_SIZE, FALSE);
-                proto_tree_add_bits_item(frag_tree, hf_opt_bxid, tvb, data_offset, 12, FALSE);
-                //guint16 bxid = tvb_get_ntohs(tvb, data_offset);
+                proto_tree_add_bits_item(frag_tree, hf_opt_bxid, tvb, data_offset, BXID_SIZE, FALSE);
                 printf("BXID: %x at offset %d, ", bxid, data_offset);
                 data_offset += BXID_SIZE;
-                proto_tree_add_bits_item(frag_tree, hf_opt_data_exists, tvb, data_offset, INFO_SIZE, FALSE); // 1 bit
+                proto_tree_add_bits_item(frag_tree, hf_opt_data_exists, tvb, data_offset, INFO_SIZE, FALSE);
                 char dataflag = tvb_get_bits8(tvb, data_offset, INFO_SIZE);
                 printf("Data exists: %x at offset %d, ", dataflag, data_offset);
                 data_offset += INFO_SIZE;
-                //proto_tree_add_item(frag_tree, hf_opt_datalen, tvb, offset, 4, ENC_BIG_ENDIAN); // 1 bit
-                    /* Data comes next */
-                    gint16 datalen = 4*tvb_get_bits16(tvb, data_offset, DATALEN_BITS_SIZE, FALSE);
-                    //proto_tree_add_bits_item(frag_tree, hf_opt_datalen, tvb, data_offset, 7, FALSE);
+                    gint16 datalen = tvb_get_bits16(tvb, data_offset, DATALEN_BITS_SIZE, FALSE);
+                if (datalen == MAX_DATALEN) {
+                    datalen = FE_NZS_BITS;
+                } else {
+                    datalen *= 4;
+                }
                     proto_tree_add_uint_bits_format_value(frag_tree, hf_opt_datalen, tvb, data_offset, DATALEN_BITS_SIZE, 0, "%u", datalen);
                     printf("Datalen: %hu at offset %d, ", datalen, data_offset);
                     data_offset += DATALEN_BITS_SIZE;
+
                 if (dataflag == 0 && datalen > 0) {
+                    /* Data comes next */
                     proto_tree_add_bits_item(frag_tree, hf_opt_data, tvb, data_offset, datalen, ENC_NA);
+                    if ((data_offset % 8) == 0 && (datalen % 8) == 0) {
+                        proto_tree_add_item(frag_tree, hf_opt_data, tvb, data_offset/8, datalen/8, ENC_NA);
+                    } else {
+                        proto_tree_add_bits_item(frag_tree, hf_opt_data, tvb, data_offset, datalen, ENC_NA);
+                    }
                     printf("Data: %x at offset %d, ", data, data_offset);
                     data_offset += datalen;
                     col_clear(pinfo->cinfo,COL_INFO);
-                } /* FIXME: else? */
+                }
             }
             printf("Advancing by %d bytes\n", event_bytes + padding);
             offset = start_offset + event_bytes + padding;
@@ -332,6 +344,8 @@ void proto_register_mep(void)
     proto_register_field_array(proto_meta, hf_meta, array_length(hf_meta));
     proto_register_field_array(proto_data, hf_data, array_length(hf_data));
     proto_register_subtree_array(ett, array_length(ett));
+
+    init_cfg();
     printf("*** DONE \n");
 }
 
