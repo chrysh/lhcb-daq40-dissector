@@ -247,7 +247,7 @@ void proto_register_mep(void)
         },
         { &hf_opt_bxid,
             { "MEP2 OPT: bxid", "mep.opt.bxid",
-            FT_UINT32, BASE_HEX,
+            FT_UINT16, BASE_HEX,
             NULL, 0,
             "opt bxid", HFILL }
         },
