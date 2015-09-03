@@ -2,3 +2,4 @@ tags
 *.la
 *.lo
 .libs/
+*.Plo
