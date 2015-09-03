@@ -25,6 +25,10 @@
 #define GLOBAL_HEADER_BYTES 4
 #define NUM_LINKS   3
 
+#define DEBUG   0
+#define debug_print(fmt, ...) \
+            do { if(DEBUG) printf(fmt, ##__VA_ARGS__); } while (0)
+
 // FIXME: The size should be read from a config file
 /*  Sizes defined in bits    */
 #define AMC40_LAPP_DP_FV_MSB_WIDE_BX12_MENTOR
