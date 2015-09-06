@@ -113,23 +113,23 @@ static void dissect_mep(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
             for (j = 0; j < NUM_LINKS; j++) {
                 debug_print("\nOPT (%d): ", j);
                 debug_print("offset: %x ", offset);
-                bxid = tvb_get_bits16(tvb, data_offset, BXID_SIZE, FALSE);
-                proto_tree_add_bits_item(frag_tree, hf_opt_bxid, tvb, data_offset, BXID_SIZE, FALSE);
+                bxid = tvb_get_bits16(tvb, data_offset, cfg.fe_bxid_bits, FALSE);
+                proto_tree_add_bits_item(frag_tree, hf_opt_bxid, tvb, data_offset, cfg.fe_bxid_bits, FALSE);
                 debug_print("BXID: %x at offset %d, ", bxid, data_offset);
-                data_offset += BXID_SIZE;
-                proto_tree_add_bits_item(frag_tree, hf_opt_data_exists, tvb, data_offset, INFO_SIZE, FALSE);
-                dataflag = tvb_get_bits8(tvb, data_offset, INFO_SIZE);
+                data_offset += cfg.fe_bxid_bits;
+                proto_tree_add_bits_item(frag_tree, hf_opt_data_exists, tvb, data_offset, cfg.fe_info_bits, FALSE);
+                dataflag = tvb_get_bits8(tvb, data_offset, cfg.fe_info_bits);
                 debug_print("Data exists: %x at offset %d, ", dataflag, data_offset);
-                data_offset += INFO_SIZE;
-                datalen = tvb_get_bits16(tvb, data_offset, DATALEN_BITS_SIZE, FALSE);
+                data_offset += cfg.fe_info_bits;
+                datalen = tvb_get_bits16(tvb, data_offset, cfg.fe_datalen_bits, FALSE);
                 if (datalen == MAX_DATALEN) {
                     datalen = FE_NZS_BITS;
                 } else {
-                    datalen *= 4;
+                    datalen *=cfg.fe_channel_bits;
                 }
-                    proto_tree_add_uint_bits_format_value(frag_tree, hf_opt_datalen, tvb, data_offset, DATALEN_BITS_SIZE, 0, "%u", datalen);
+                    proto_tree_add_uint_bits_format_value(frag_tree, hf_opt_datalen, tvb, data_offset, cfg.fe_datalen_bits, 0, "%u", datalen);
                     debug_print("Datalen: %hu at offset %d, ", datalen, data_offset);
-                    data_offset += DATALEN_BITS_SIZE;
+                    data_offset += cfg.fe_datalen_bits;
 
                 if (dataflag == 0 && datalen > 0) {
                     /* Data comes next */

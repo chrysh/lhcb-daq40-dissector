@@ -31,25 +31,59 @@
 
 // FIXME: The size should be read from a config file
 /*  Sizes defined in bits    */
-#define AMC40_LAPP_DP_FV_MSB_WIDE_BX12_MENTOR
+#define AMC40_LAPP_DP_FF_MSB_WIDE_BX12_MENTOR
 
-#ifdef AMC40_LAPP_DP_FV_MSB_WIDE_BX12_MENTOR
+/* FV */
+#ifdef AMC40_LAPP_DP_FF_MSB_WIDE_BX12_MENTOR
 #define BXID_SIZE           12
 #define INFO_SIZE           1
 #define DATALEN_BITS_SIZE   7
+#define FV
 #elif defined AMC40_LAPP_DP_FV_MSB_GBT_BX12_MENTOR
 #define BXID_SIZE           12
 #define INFO_SIZE           4
 #define DATALEN_BITS_SIZE   7
+#define FV
 #elif defined AMC40_LAPP_DP_FV_MSB_WIDE_BX8_MENTOR
 #define BXID_SIZE           8
 #define INFO_SIZE           1
 #define DATALEN_BITS_SIZE   7
+#define FV
 #elif defined AMC40_LAPP_DP_FV_MSB_GBT_BX8_MENTOR
 #define BXID_SIZE           8
 #define INFO_SIZE           1
 #define DATALEN_BITS_SIZE   7
+#define FV
+
+/* FF */
+#elif defined AMC40_LAPP_DP_FF_MSB_WIDE_BX12_MENTOR
+#define BXID_SIZE           12
+#define INFO_SIZE           4
+#define DATALEN_BITS_SIZE   0
+#define FF
+#elif defined AMC40_LAPP_DP_FF_MSB_WIDE_BX8_MENTOR
+#define BXID_SIZE           8
+#define INFO_SIZE           8
+#define DATALEN_BITS_SIZE   0
+#define FF
+#elif defined AMC40_LAPP_DP_FF_MSB_GBT_BX12_MENTOR
+#define BXID_SIZE           12
+#define INFO_SIZE           4
+#define DATALEN_BITS_SIZE   0
+#define FF
+#elif defined AMC40_LAPP_DP_FF_MSB_GBT_BX8_MENTOR
+#define BXID_SIZE           8
+#define INFO_SIZE           8
+#define DATALEN_BITS_SIZE   0
+#define FF
 #endif
+
+#ifdef FV
+#define CHANNEL_BITS 4
+#else
+#define CHANNEL_BITS 8
+#endif
+
 /* FIXME: calculate it once? */
 #define MAX_DATALEN     127     // 0b1111111
 #define FE_NZS_BITS     200
@@ -57,7 +91,6 @@
 /* Default config vals */
 #define HEADER_MSB  true
 #define FRAME_BITS  80
-#define CHANNEL_BITS 8
 #define NZS_BITS    64
 
 
